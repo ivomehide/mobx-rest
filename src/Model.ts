@@ -11,7 +11,6 @@ import Collection from './Collection'
 import Request from './Request'
 import apiClient from './apiClient'
 import { OptimisticId, Id, DestroyOptions, SaveOptions } from './types'
-import {AnnotationsMap} from "mobx/dist/api/annotation";
 
 function toJS(source) {
   let repr = mobxToJS(source)
@@ -56,8 +55,6 @@ export default class Model extends Base {
     this.committedAttributes = observable.map(mergedAttributes)
 
     makeObservable<Model>(this, {
-      //attributes: observable,
-      //committedAttributes: observable,
       isNew: computed,
       changedAttributes: computed,
       changes: computed,

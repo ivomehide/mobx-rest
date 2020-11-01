@@ -12,7 +12,6 @@ export default class Base {
   constructor() {
     makeObservable<Base>(this, {
       request: observable,
-      //requests: observable.shallow,
       rpc: action
     })
   }

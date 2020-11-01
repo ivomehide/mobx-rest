@@ -30,7 +30,6 @@ export default abstract class Collection<T extends Model> extends Base {
     this.models = observable.array(data.map(m => this.build(m)))
 
     makeObservable<Collection<T>,"_ids">(this, {
-      // models: observable.array,
       index: computed({ keepAlive: true }),
       length: computed,
       isEmpty: computed,
