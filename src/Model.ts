@@ -9,8 +9,7 @@ import deepmerge from 'deepmerge'
 import Base from './Base'
 import Collection from './Collection'
 import Request from './Request'
-import apiClient from './apiClient'
-import { OptimisticId, Id, DestroyOptions, SaveOptions } from './types'
+import { OptimisticId, Id, DestroyOptions, SaveOptions, Adapter } from './types'
 
 function toJS(source) {
   let repr = mobxToJS(source)
@@ -116,6 +115,14 @@ export default class Model extends Base {
     } else {
       return `${urlRoot}/${this.get(this.primaryKey)}`
     }
+  }
+
+  /**
+   * Returns API client used for that model
+   */
+  apiClient (): Adapter {
+    if (this.collection) return this.collection.apiClient()
+    return super.apiClient()
   }
 
   /**
@@ -228,7 +235,7 @@ export default class Model extends Base {
    * Fetches the model from the backend.
    */
   fetch ({ data, ...otherOptions }: { data?: {} } = {}): Request {
-    const { abort, promise } = apiClient().get(this.url(), data, otherOptions)
+    const { abort, promise } = this.apiClient().get(this.url(), data, otherOptions)
 
     promise
       .then(data => {
@@ -295,7 +302,7 @@ export default class Model extends Base {
       if (optimistic && this.request) this.request.progress = progress
     })
 
-    const { promise, abort } = apiClient()[method](
+    const { promise, abort } = this.apiClient()[method](
       this.url(),
       data,
       { onProgress, ...otherOptions }
@@ -351,7 +358,7 @@ export default class Model extends Base {
       return new Request(Promise.resolve())
     }
 
-    const { promise, abort } = apiClient().del(
+    const { promise, abort } = this.apiClient().del(
       this.url(),
       data,
       otherOptions

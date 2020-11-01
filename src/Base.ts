@@ -4,6 +4,7 @@ import apiClient from './apiClient'
 import includes from 'lodash/includes'
 import isObject from 'lodash/isObject'
 import {action, observable, IObservableArray, runInAction, makeObservable} from 'mobx'
+import {Adapter} from "./types";
 
 export default class Base {
   request: Request | null = null
@@ -79,13 +80,20 @@ export default class Base {
   }
 
   /**
+   * Returns API client used for that resource
+   */
+  apiClient (): Adapter {
+    return apiClient()
+  }
+
+  /**
    * Call an RPC action for all those
    * non-REST endpoints that you may have in
    * your API.
    */
   rpc (endpoint: string | { rootUrl: string }, options?: {}, label: string = 'calling'): Request {
     const url = isObject(endpoint) ? endpoint.rootUrl : `${this.url()}/${endpoint}`
-    const { promise, abort } = apiClient().post(url, options)
+    const { promise, abort } = this.apiClient().post(url, options)
 
     return this.withRequest(label, promise, abort)
   }

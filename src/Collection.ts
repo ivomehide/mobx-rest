@@ -1,12 +1,11 @@
 import Base from './Base'
 import Model, { DEFAULT_PRIMARY } from './Model'
 import Request from './Request'
-import apiClient from './apiClient'
 import difference from 'lodash/difference'
 import intersection from 'lodash/intersection'
 import entries from 'lodash/entries'
 import compact from 'lodash/compact'
-import {observable, action, computed, IObservableArray, reaction, makeObservable} from 'mobx'
+import {observable, action, computed, IObservableArray, makeObservable} from 'mobx'
 import { CreateOptions, SetOptions, GetOptions, FindOptions, Id } from './types'
 
 type IndexTree<T> = Map<string, Index<T>>
@@ -368,7 +367,7 @@ export default abstract class Collection<T extends Model> extends Base {
    * or removing.
    */
   fetch ({ data, ...otherOptions }: SetOptions = {}): Request {
-    const { abort, promise } = apiClient().get(this.url(), data, otherOptions)
+    const { abort, promise } = this.apiClient().get(this.url(), data, otherOptions)
 
     promise
       .then(data => {
