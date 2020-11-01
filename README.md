@@ -601,14 +601,25 @@ A collection looks like this:
 const apiPath = '/api'
 import adapter from 'mobx-rest-fetch-adapter'
 import { apiClient, Collection, Model } from 'mobx-rest'
+import { makeObservable, computed } from "mobx"
 
 // We will use the adapter to make the `xhr` calls
 apiClient(adapter, { apiPath })
 
 class Task extends Model { }
 class Tasks extends Collection {
+  constructor() {
+    makeObservable(this, {
+      activeTasks: computed
+    })
+  }
+
   url ()  { return `/tasks` }
   model () { return Task }
+
+  get activeTasks () {
+    return this.filter({ resolved: false })
+  }
 }
 
 // We instantiate the collection and export it as a singleton
@@ -619,52 +630,40 @@ And here an example of how to use React with it:
 
 ```js
 import tasksCollection from './TasksCollection'
-import { computed } from 'mobx'
-import { observer } from 'mobx-react'
+import { observer, computed } from 'mobx'
 
-@observer
-class Task extends React.Component {
-  onClick () {
-    this.props.task.save({ resolved: true })
-  }
+const Task = observer(({task}) => {
+    const onCLick = () => {
+        task.save({ resolved: true })
+    }
 
-  render () {
     return (
       <li key={task.id}>
-        <button onClick={this.onClick.bind(this)}>
+        <button onClick={onClick}>
           resolve
         </button>
-        {this.props.task.get('name')}
+        {task.get('name')}
       </li>
     )
-  }
-}
+})
 
-@observer
-class Tasks extends React.Component {
-  componentDidMount () {
-    // This will call `/api/tasks?all=true`
-    tasksCollection.fetch({ data: { all: true } })
-  }
-
-  @computed
-  get activeTasks () {
-    return tasksCollection.filter({ resolved: false })
-  }
-
-  render () {
+const Tasks = observer(() => {
+    useEffect(() => {
+        // This will call `/api/tasks?all=true`
+        tasksCollection.fetch({ data: { all: true } })
+    }, [])
+    
     if (tasksCollection.isRequest('fetching')) {
       return <span>Fetching tasks...</span>
     }
 
     return (
       <div>
-        <span>{this.activeTasks.length} tasks</span>
-        <ul>{activeTasks.map((task) => <Task task={task} />)}</ul>
+        <span>{tasksCollection.activeTasks.length} tasks</span>
+        <ul>{tasksCollection.activeTasks.map((task) => <Task task={task} />)}</ul>
       </div>
     )
-  }
-}
+})
 
 ```
 
@@ -711,15 +710,21 @@ This is something that mobx makes really easy to achieve:
 ```js
 import users from './UsersCollections'
 import comments from './CommentsCollections'
-import { computed } from 'mobx'
+import { makeObservable, computed } from "mobx"
 
 class Task extends Model {
-  @computed
+  constructor() {
+    super()
+    makeObservable(this, {
+      author: computed,
+      comments: computed
+    })    
+  }
+
   author () {
     return users.get(this.get('user_id'))
   }
 
-  @computed
   comments () {
     return comments.filter({ task_id: this.get('id') })
   }
