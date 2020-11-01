@@ -1,4 +1,4 @@
-import { ObservableMap, action, computed, observable, runInAction, toJS } from 'mobx'
+import {ObservableMap, action, computed, observable, runInAction, toJS as mobxToJS, makeObservable} from 'mobx'
 import debounce from 'lodash/debounce'
 import includes from 'lodash/includes'
 import isEqual from 'lodash/isEqual'
@@ -11,6 +11,19 @@ import Collection from './Collection'
 import Request from './Request'
 import apiClient from './apiClient'
 import { OptimisticId, Id, DestroyOptions, SaveOptions } from './types'
+import {AnnotationsMap} from "mobx/dist/api/annotation";
+
+function toJS(source) {
+  let repr = mobxToJS(source)
+  if (repr instanceof Map) {
+    const res = {}
+    repr.forEach((value, key) => {
+      res[key] = value
+    })
+    return res
+  }
+  return repr
+}
 
 const dontMergeArrays = (_oldArray, newArray) => newArray
 
@@ -41,6 +54,22 @@ export default class Model extends Base {
 
     this.attributes = observable.map(mergedAttributes)
     this.committedAttributes = observable.map(mergedAttributes)
+
+    makeObservable<Model>(this, {
+      //attributes: observable,
+      //committedAttributes: observable,
+      isNew: computed,
+      changedAttributes: computed,
+      changes: computed,
+      commitChanges: action,
+      discardChanges: action,
+      reset: action,
+      set: action,
+      fetch: action,
+      save: action,
+      destroy: action
+    })
+
   }
 
   /**
@@ -48,7 +77,7 @@ export default class Model extends Base {
    * of the model
    */
   toJS () {
-    return toJS(this.attributes, { exportMapsAsObjects: true })
+    return toJS(this.attributes)
   }
 
   /**
@@ -98,7 +127,6 @@ export default class Model extends Base {
    * We determine this asking if it contains
    * the `primaryKey` attribute (set by the server).
    */
-  @computed
   get isNew (): boolean {
     return !this.has(this.primaryKey) || !this.get(this.primaryKey)
   }
@@ -143,7 +171,6 @@ export default class Model extends Base {
   /**
    * Get an array with the attributes names that have changed.
    */
-  @computed
   get changedAttributes (): Array<string> {
     return getChangedAttributesBetween(
       toJS(this.committedAttributes),
@@ -154,7 +181,6 @@ export default class Model extends Base {
   /**
    * Gets the current changes.
    */
-  @computed
   get changes (): { [key: string]: any } {
     return getChangesBetween(
       toJS(this.committedAttributes),
@@ -174,12 +200,10 @@ export default class Model extends Base {
     return this.changedAttributes.length > 0
   }
 
-  @action
   commitChanges (): void {
     this.committedAttributes.replace(toJS(this.attributes))
   }
 
-  @action
   discardChanges (): void {
     this.attributes.replace(toJS(this.committedAttributes))
   }
@@ -187,7 +211,6 @@ export default class Model extends Base {
   /**
    * Replace all attributes with new data
    */
-  @action
   reset (data?: {}): void {
     this.attributes.replace(
       data
@@ -200,7 +223,6 @@ export default class Model extends Base {
    * Merge the given attributes with
    * the current ones
    */
-  @action
   set (data: {}): void {
     this.attributes.merge(data)
   }
@@ -208,7 +230,6 @@ export default class Model extends Base {
   /**
    * Fetches the model from the backend.
    */
-  @action
   fetch ({ data, ...otherOptions }: { data?: {} } = {}): Request {
     const { abort, promise } = apiClient().get(this.url(), data, otherOptions)
 
@@ -232,7 +253,6 @@ export default class Model extends Base {
    *
    * It supports optimistic and patch updates.
    */
-  @action
   save (
     attributes?: {},
     {
@@ -293,7 +313,7 @@ export default class Model extends Base {
           toJS(this.attributes)
         )
 
-        runInAction('save success', () => {
+        runInAction(() => {
           this.set(data)
           this.commitChanges()
 
@@ -320,7 +340,6 @@ export default class Model extends Base {
    * requests the backend to delete it there
    * too
    */
-  @action
   destroy (
     { data, optimistic = true, ...otherOptions }: DestroyOptions = {}
   ): Request {

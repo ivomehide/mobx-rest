@@ -3,11 +3,19 @@ import ErrorObject from './ErrorObject'
 import apiClient from './apiClient'
 import includes from 'lodash/includes'
 import isObject from 'lodash/isObject'
-import { action, observable, IObservableArray, runInAction } from 'mobx'
+import {action, observable, IObservableArray, runInAction, makeObservable} from 'mobx'
 
 export default class Base {
-  @observable request: Request | null
-  @observable.shallow requests: IObservableArray<Request> = observable.array([])
+  request: Request | null = null
+  requests: IObservableArray<Request> = observable.array([])
+
+  constructor() {
+    makeObservable<Base>(this, {
+      request: observable,
+      //requests: observable.shallow,
+      rpc: action
+    })
+  }
 
   /**
    * Returns the resource's url.
@@ -30,14 +38,14 @@ export default class Base {
     const handledPromise = promise
       .then(response => {
         if (this.request === request) this.request = null
-        runInAction('remove request', () => {
+        runInAction(() => {
           this.requests.remove(request)
         })
 
         return response
       })
       .catch(error => {
-        runInAction('remove request', () => {
+        runInAction(() => {
           this.requests.remove(request)
         })
 
@@ -76,7 +84,6 @@ export default class Base {
    * non-REST endpoints that you may have in
    * your API.
    */
-  @action
   rpc (endpoint: string | { rootUrl: string }, options?: {}, label: string = 'calling'): Request {
     const url = isObject(endpoint) ? endpoint.rootUrl : `${this.url()}/${endpoint}`
     const { promise, abort } = apiClient().post(url, options)

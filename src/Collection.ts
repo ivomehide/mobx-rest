@@ -6,7 +6,7 @@ import difference from 'lodash/difference'
 import intersection from 'lodash/intersection'
 import entries from 'lodash/entries'
 import compact from 'lodash/compact'
-import { observable, action, computed, IObservableArray, reaction } from 'mobx'
+import {observable, action, computed, IObservableArray, reaction, makeObservable} from 'mobx'
 import { CreateOptions, SetOptions, GetOptions, FindOptions, Id } from './types'
 
 type IndexTree<T> = Map<string, Index<T>>
@@ -28,6 +28,20 @@ export default abstract class Collection<T extends Model> extends Base {
   constructor (data: Array<{ [key: string]: any }> = []) {
     super()
     this.models = observable.array(data.map(m => this.build(m)))
+
+    makeObservable<Collection<T>,"_ids">(this, {
+      // models: observable.array,
+      index: computed({ keepAlive: true }),
+      length: computed,
+      isEmpty: computed,
+      _ids: computed,
+      add: action,
+      reset: action,
+      remove: action,
+      set: action,
+      create: action,
+      fetch: action
+    })
   }
 
   /*
@@ -61,7 +75,6 @@ export default abstract class Collection<T extends Model> extends Base {
    * collection is alive, even if no one is referencing it.
    * This way we can ensure to calculate it only once.
    */
-  @computed({ keepAlive: true })
   get index (): IndexTree<T> {
     const indexes = this.indexes.concat([this.primaryKey])
 
@@ -82,7 +95,6 @@ export default abstract class Collection<T extends Model> extends Base {
   /**
    * Alias for models.length
    */
-  @computed
   get length (): Number {
     return this.models.length
   }
@@ -137,7 +149,6 @@ export default abstract class Collection<T extends Model> extends Base {
   /**
    * Wether the collection is empty
    */
-  @computed
   get isEmpty (): boolean {
     return this.length === 0
   }
@@ -145,7 +156,6 @@ export default abstract class Collection<T extends Model> extends Base {
   /**
    * Gets the ids of all the items in the collection
    */
-  @computed
   private get _ids (): Array<Id> {
     return compact(Array.from(this.index.get(this.primaryKey).keys()))
   }
@@ -231,7 +241,6 @@ export default abstract class Collection<T extends Model> extends Base {
   /**
    * Adds a model or collection of models.
    */
-  @action
   add (data: Array<{ [key: string]: any } | T> | { [key: string]: any } | T): Array<T> {
     if (!Array.isArray(data)) data = [data]
 
@@ -247,7 +256,6 @@ export default abstract class Collection<T extends Model> extends Base {
   /**
    * Resets the collection of models.
    */
-  @action
   reset (data: Array<{ [key: string]: any }>): void {
     this.models.replace(data.map(m => this.build(m)))
   }
@@ -255,7 +263,6 @@ export default abstract class Collection<T extends Model> extends Base {
   /**
    * Removes the model with the given ids or uuids
    */
-  @action
   remove (ids: Id | T | Array<Id | T>): void {
     if (!Array.isArray(ids)) {
       ids = [ids]
@@ -284,7 +291,6 @@ export default abstract class Collection<T extends Model> extends Base {
    *
    * You can disable adding, changing or removing.
    */
-  @action
   set (
     resources: Array<{ [key: string]: any } | T>,
     { add = true, change = true, remove = true }: SetOptions = {}
@@ -335,7 +341,6 @@ export default abstract class Collection<T extends Model> extends Base {
    * The default behaviour is optimistic but this
    * can be tuned.
    */
-  @action
   create (
     attributesOrModel: { [key: string]: any } | T,
     { optimistic = true }: CreateOptions = {}
@@ -363,7 +368,6 @@ export default abstract class Collection<T extends Model> extends Base {
    * use the options to disable adding, changing
    * or removing.
    */
-  @action
   fetch ({ data, ...otherOptions }: SetOptions = {}): Request {
     const { abort, promise } = apiClient().get(this.url(), data, otherOptions)
 
